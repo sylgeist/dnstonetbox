@@ -1,0 +1,50 @@
+# Sync interval when running in daemon mode (e.g. 5m, 1h).
+# Ignored when using --once flag or running via cron.
+interval: 5m
+
+netbox:
+  url: https://netbox.example.com
+  token: your-api-token-here
+  # tag: dns-sync  # optional: only sync IPs tagged with this value
+
+nsd:
+  zones_dir: /var/nsd/zones/master
+  reload_cmd: nsd-control reload
+  zones:
+    - name: example.com
+      ttl: 3600
+      primary_ns: ns1.example.com.   # trailing dot required
+      ns:
+        - ns1.example.com.
+        - ns2.example.com.
+      email: hostmaster.example.com. # trailing dot required
+
+    - name: 1.168.192.in-addr.arpa  # IPv4 reverse zone for 192.168.1.0/24
+      ttl: 3600
+      primary_ns: ns1.example.com.
+      ns:
+        - ns1.example.com.
+        - ns2.example.com.
+      email: hostmaster.example.com.
+
+    # IPv6 reverse zone: nibble-reversed prefix + .ip6.arpa
+    # For 2001:db8:100::/48 → "0.0.1.0.8.b.d.0.1.0.0.2.ip6.arpa"
+    # - name: 0.0.1.0.8.b.d.0.1.0.0.2.ip6.arpa
+    #   ttl: 3600
+    #   primary_ns: ns1.example.com.
+    #   ns:
+    #     - ns1.example.com.
+    #   email: hostmaster.example.com.
+
+unbound:
+  # Path to the generated include file. Add to unbound.conf:
+  #   include: /var/unbound/etc/local-hosts.conf
+  config_file: /var/unbound/etc/local-hosts.conf
+  reload_cmd: unbound-control reload
+  ttl: 3600  # optional, defaults to 3600
+
+dhcpd:
+  # Path to the generated include file. Add to dhcpd.conf:
+  #   include "/etc/dhcpd.d/static-hosts.conf";
+  config_file: /etc/dhcpd.d/static-hosts.conf
+  reload_cmd: rcctl restart dhcpd
