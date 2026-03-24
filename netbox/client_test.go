@@ -30,7 +30,9 @@ func singlePageServer(t *testing.T, results []ipFixture) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response{Count: len(results), Results: results})
+		if err := json.NewEncoder(w).Encode(response{Count: len(results), Results: results}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}))
 }
 
@@ -90,22 +92,19 @@ func TestFetchHosts_Pagination(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		page++
+		var resp response
 		if page == 1 {
 			next := srvURL + "/api/ipam/ip-addresses/?offset=1"
-			json.NewEncoder(w).Encode(response{
-				Count: 2,
-				Next:  &next,
-				Results: []ipFixture{
-					{Address: "192.168.1.10/24", DNSName: "host1.example.com"},
-				},
-			})
+			resp = response{Count: 2, Next: &next, Results: []ipFixture{
+				{Address: "192.168.1.10/24", DNSName: "host1.example.com"},
+			}}
 		} else {
-			json.NewEncoder(w).Encode(response{
-				Count: 2,
-				Results: []ipFixture{
-					{Address: "192.168.1.11/24", DNSName: "host2.example.com"},
-				},
-			})
+			resp = response{Count: 2, Results: []ipFixture{
+				{Address: "192.168.1.11/24", DNSName: "host2.example.com"},
+			}}
+		}
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	}))
 	defer srv.Close()
@@ -155,7 +154,9 @@ func TestFetchHosts_AuthHeader(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotAuth = r.Header.Get("Authorization")
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response{})
+		if err := json.NewEncoder(w).Encode(response{}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}))
 	defer srv.Close()
 
