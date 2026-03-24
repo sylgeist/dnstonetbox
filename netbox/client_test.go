@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/sseekamp/dnstonetbox/netbox"
+	"github.com/sylgeist/dnstonetbox/netbox"
 )
 
 // response is a helper for building mock NetBox API responses.
@@ -17,9 +17,9 @@ type response struct {
 }
 
 type ipFixture struct {
-	Address        string          `json:"address"`
-	DNSName        string          `json:"dns_name"`
-	AssignedObject *macFixture     `json:"assigned_object"`
+	Address        string      `json:"address"`
+	DNSName        string      `json:"dns_name"`
+	AssignedObject *macFixture `json:"assigned_object"`
 }
 
 type macFixture struct {

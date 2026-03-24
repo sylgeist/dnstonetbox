@@ -7,19 +7,19 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/sseekamp/dnstonetbox/dhcpd"
-	"github.com/sseekamp/dnstonetbox/netbox"
-	"github.com/sseekamp/dnstonetbox/nsd"
-	"github.com/sseekamp/dnstonetbox/unbound"
+	"github.com/sylgeist/dnstonetbox/dhcpd"
+	"github.com/sylgeist/dnstonetbox/netbox"
+	"github.com/sylgeist/dnstonetbox/nsd"
+	"github.com/sylgeist/dnstonetbox/unbound"
 )
 
 // Config is the top-level configuration structure.
 type Config struct {
-	Netbox   netbox.Config   `yaml:"netbox"`
-	NSD      nsd.Config      `yaml:"nsd"`
-	Unbound  unbound.Config  `yaml:"unbound"`
-	DHCPD    dhcpd.Config    `yaml:"dhcpd"`
-	Interval duration        `yaml:"interval"`
+	Netbox   netbox.Config  `yaml:"netbox"`
+	NSD      nsd.Config     `yaml:"nsd"`
+	Unbound  unbound.Config `yaml:"unbound"`
+	DHCPD    dhcpd.Config   `yaml:"dhcpd"`
+	Interval duration       `yaml:"interval"`
 }
 
 // duration wraps time.Duration to support YAML strings like "5m" or "1h".

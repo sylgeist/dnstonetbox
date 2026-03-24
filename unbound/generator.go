@@ -7,7 +7,7 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/sseekamp/dnstonetbox/model"
+	"github.com/sylgeist/dnstonetbox/model"
 )
 
 // Config holds Unbound generator settings.

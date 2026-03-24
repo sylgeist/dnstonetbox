@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sseekamp/dnstonetbox/model"
+	"github.com/sylgeist/dnstonetbox/model"
 )
 
 // --- isReverseZone ---

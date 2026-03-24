@@ -1,4 +1,4 @@
-module github.com/sseekamp/dnstonetbox
+module github.com/sylgeist/dnstonetbox
 
 go 1.22
 

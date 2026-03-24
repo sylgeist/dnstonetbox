@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/sseekamp/dnstonetbox/model"
+	"github.com/sylgeist/dnstonetbox/model"
 )
 
 // Config holds NetBox connection settings.

@@ -5,10 +5,10 @@ import (
 	"log"
 	"time"
 
-	"github.com/sseekamp/dnstonetbox/dhcpd"
-	"github.com/sseekamp/dnstonetbox/netbox"
-	"github.com/sseekamp/dnstonetbox/nsd"
-	"github.com/sseekamp/dnstonetbox/unbound"
+	"github.com/sylgeist/dnstonetbox/dhcpd"
+	"github.com/sylgeist/dnstonetbox/netbox"
+	"github.com/sylgeist/dnstonetbox/nsd"
+	"github.com/sylgeist/dnstonetbox/unbound"
 )
 
 func main() {

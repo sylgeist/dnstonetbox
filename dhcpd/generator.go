@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/sseekamp/dnstonetbox/model"
+	"github.com/sylgeist/dnstonetbox/model"
 )
 
 // Config holds DHCPD generator settings.

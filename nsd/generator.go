@@ -13,7 +13,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/sseekamp/dnstonetbox/model"
+	"github.com/sylgeist/dnstonetbox/model"
 )
 
 // Config holds NSD generator settings.
@@ -216,7 +216,8 @@ func ptrEntriesForZone(hosts []model.Host, zone string) []ptrEntry {
 // "1.168.192.in-addr.arpa" for an IPv4 address.
 //
 // Example: IP 192.168.1.10 in zone "1.168.192.in-addr.arpa" → "10"
-//          IP 192.168.1.10 in zone "168.192.in-addr.arpa"   → "10.1"
+//
+//	IP 192.168.1.10 in zone "168.192.in-addr.arpa"   → "10.1"
 func ipv4PTRRelName(ip net.IP, zone string) (string, bool) {
 	v4 := ip.To4()
 	if v4 == nil {
@@ -256,7 +257,8 @@ func ipv4PTRRelName(ip net.IP, zone string) (string, bool) {
 // "0.0.1.0.8.b.d.0.1.0.0.2.ip6.arpa" for an IPv6 address.
 //
 // Example: 2001:db8:100::1 in zone "0.0.1.0.8.b.d.0.1.0.0.2.ip6.arpa"
-//          → "1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0"
+//
+//	→ "1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0"
 func ipv6PTRRelName(ip net.IP, zone string) (string, bool) {
 	v6 := ip.To16()
 	if v6 == nil || ip.To4() != nil {
@@ -271,7 +273,7 @@ func ipv6PTRRelName(ip net.IP, zone string) (string, bool) {
 	nibbles := make([]string, 32)
 	for i := 0; i < 16; i++ {
 		b := v6[i]
-		nibbles[31-2*i] = fmt.Sprintf("%x", b>>4)  // high nibble
+		nibbles[31-2*i] = fmt.Sprintf("%x", b>>4)   // high nibble
 		nibbles[30-2*i] = fmt.Sprintf("%x", b&0x0f) // low nibble
 	}
 
