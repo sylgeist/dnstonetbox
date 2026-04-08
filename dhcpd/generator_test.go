@@ -142,7 +142,7 @@ func TestSync_ReloadNotCalledWhenUnchanged(t *testing.T) {
 	}
 
 	Sync(cfg, hosts, false, false) //nolint:errcheck // first write
-	os.Remove(flag)
+	_ = os.Remove(flag)
 
 	if err := Sync(cfg, hosts, false, false); err != nil {
 		t.Fatalf("second Sync: %v", err)

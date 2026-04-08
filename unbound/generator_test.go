@@ -93,7 +93,7 @@ func TestSync_ReloadNotCalledWhenUnchanged(t *testing.T) {
 	hosts := []model.Host{{Name: "host1.example.com", IPv4: net.ParseIP("192.168.1.10")}}
 
 	Sync(cfg, hosts, false, false) //nolint:errcheck // first write
-	os.Remove(flag)
+	_ = os.Remove(flag)
 
 	if err := Sync(cfg, hosts, false, false); err != nil {
 		t.Fatalf("second Sync: %v", err)

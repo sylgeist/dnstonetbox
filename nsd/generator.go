@@ -165,7 +165,7 @@ func renderZone(zone ZoneConfig, hosts []model.Host) ([]byte, int, error) {
 		ptrs := ptrEntriesForZone(hosts, zone.Name)
 		serial := contentSerial(zone.Name, func(w io.Writer) {
 			for _, p := range ptrs {
-				fmt.Fprintf(w, "%s\t%s\n", p.RelName, p.Target)
+				_, _ = fmt.Fprintf(w, "%s\t%s\n", p.RelName, p.Target)
 			}
 		})
 		err := reverseTmpl.Execute(&buf, reverseZoneData{Zone: zone, PTRs: ptrs, Serial: serial})
@@ -175,7 +175,7 @@ func renderZone(zone ZoneConfig, hosts []model.Host) ([]byte, int, error) {
 	zoneHosts := hostsForZone(hosts, zone.Name)
 	serial := contentSerial(zone.Name, func(w io.Writer) {
 		for _, host := range zoneHosts {
-			fmt.Fprintf(w, "%s\t%s\t%s\n", host.Name, host.IPv4, host.IPv6)
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", host.Name, host.IPv4, host.IPv6)
 		}
 	})
 	err := forwardTmpl.Execute(&buf, forwardZoneData{Zone: zone, Hosts: zoneHosts, Serial: serial})
@@ -187,7 +187,7 @@ func renderZone(zone ZoneConfig, hosts []model.Host) ([]byte, int, error) {
 // making zone files idempotent across runs.
 func contentSerial(zoneName string, write func(io.Writer)) string {
 	h := fnv.New32a()
-	fmt.Fprint(h, zoneName)
+	_, _ = fmt.Fprint(h, zoneName)
 	write(h)
 	return fmt.Sprintf("%d", h.Sum32())
 }

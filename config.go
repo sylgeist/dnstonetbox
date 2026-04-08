@@ -41,7 +41,7 @@ func loadConfig(path string) (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open config: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	cfg := &Config{
 		Interval: duration{5 * time.Minute},
