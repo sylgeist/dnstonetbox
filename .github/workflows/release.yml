@@ -13,7 +13,7 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.24"
+          go-version: "stable"
           cache: true
 
       - name: Verify module tidiness
@@ -34,7 +34,7 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.24"
+          go-version: "stable"
           cache: true
 
       - uses: golangci/golangci-lint-action@v8
@@ -52,7 +52,7 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.24"
+          go-version: "stable"
           cache: true
 
       - name: Build release binaries
