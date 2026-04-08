@@ -142,7 +142,7 @@ func TestIPv6PTRRelName(t *testing.T) {
 func newZoneCfg(name string) ZoneConfig {
 	return ZoneConfig{
 		Name:      name,
-		TTL:       3600,
+		TTL:       ttlValue{"3600"},
 		PrimaryNS: "ns1.example.com.",
 		NS:        []string{"ns1.example.com."},
 		Email:     "hostmaster.example.com.",

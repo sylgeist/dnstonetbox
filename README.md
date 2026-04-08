@@ -75,10 +75,14 @@ Generates zone files for [NSD](https://www.nlnetlabs.nl/projects/nsd/). Forward 
 | Field | Required | Description |
 |---|---|---|
 | `name` | yes | Zone apex, e.g. `example.com` or `1.168.192.in-addr.arpa` |
-| `ttl` | no | Default TTL in seconds. Default: `3600` |
+| `ttl` | no | `$TTL` and SOA minimum. Accepts seconds (`3600`) or NSD duration strings (`1h`, `2w`). Default: `3600` |
 | `primary_ns` | yes | Primary NS FQDN with trailing dot, e.g. `ns1.example.com.` |
 | `ns` | yes | List of NS FQDNs with trailing dots |
 | `email` | yes | SOA rname with trailing dot, e.g. `hostmaster.example.com.` |
+| `refresh` | no | SOA refresh interval. Default: `2h` |
+| `retry` | no | SOA retry interval. Default: `1h` |
+| `expire` | no | SOA expire interval. Default: `2w` |
+| `minimum` | no | SOA minimum/negative TTL. Default: same as `ttl` |
 
 **Reverse zones:**
 

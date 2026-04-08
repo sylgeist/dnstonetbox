@@ -13,6 +13,8 @@ import (
 	"strings"
 	"text/template"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/sylgeist/dnstonetbox/model"
 )
 
@@ -23,13 +25,35 @@ type Config struct {
 	Zones     []ZoneConfig `yaml:"zones"`
 }
 
+// ttlValue is a SOA duration field that accepts either an integer (seconds)
+// or an NSD-style duration string like "2w", "1d", "1h", "3600".
+// It is stored as a raw string and passed through verbatim to the zone file.
+type ttlValue struct{ s string }
+
+func (t ttlValue) String() string { return t.s }
+func (t ttlValue) IsZero() bool   { return t.s == "" }
+
+// UnmarshalYAML captures the raw scalar value regardless of whether the YAML
+// source wrote it as an integer (3600) or a string ("2w").
+func (t *ttlValue) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind != yaml.ScalarNode {
+		return fmt.Errorf("ttl value must be a scalar")
+	}
+	t.s = value.Value
+	return nil
+}
+
 // ZoneConfig describes one authoritative DNS zone (forward or reverse).
 type ZoneConfig struct {
 	Name      string   `yaml:"name"`       // zone apex, e.g. "example.com" or "1.168.192.in-addr.arpa"
-	TTL       int      `yaml:"ttl"`        // default 3600
+	TTL       ttlValue `yaml:"ttl"`        // $TTL and SOA minimum; default "3600"
 	PrimaryNS string   `yaml:"primary_ns"` // FQDN with trailing dot
 	NS        []string `yaml:"ns"`         // all NS FQDNs with trailing dots
 	Email     string   `yaml:"email"`      // SOA rname with trailing dot
+	Refresh   ttlValue `yaml:"refresh"`    // SOA refresh; default "2h"
+	Retry     ttlValue `yaml:"retry"`      // SOA retry;   default "1h"
+	Expire    ttlValue `yaml:"expire"`     // SOA expire;  default "2w"
+	Minimum   ttlValue `yaml:"minimum"`    // SOA minimum; default = TTL
 }
 
 // ptrEntry holds a computed PTR record for a reverse zone template.
@@ -68,11 +92,11 @@ $ORIGIN {{ .Zone.Name }}.
 $TTL {{ .Zone.TTL }}
 
 @ IN SOA {{ .Zone.PrimaryNS }} {{ .Zone.Email }} (
-    {{ .Serial }} ; serial
-    7200          ; refresh
-    3600          ; retry
-    1209600       ; expire
-    {{ .Zone.TTL }} ) ; minimum
+    {{ .Serial }}      ; serial
+    {{ .Zone.Refresh }} ; refresh
+    {{ .Zone.Retry }}   ; retry
+    {{ .Zone.Expire }}  ; expire
+    {{ .Zone.Minimum }} ) ; minimum
 {{ range .Zone.NS }}
 @ IN NS {{ . }}
 {{- end }}
@@ -90,11 +114,11 @@ $ORIGIN {{ .Zone.Name }}.
 $TTL {{ .Zone.TTL }}
 
 @ IN SOA {{ .Zone.PrimaryNS }} {{ .Zone.Email }} (
-    {{ .Serial }} ; serial
-    7200          ; refresh
-    3600          ; retry
-    1209600       ; expire
-    {{ .Zone.TTL }} ) ; minimum
+    {{ .Serial }}      ; serial
+    {{ .Zone.Refresh }} ; refresh
+    {{ .Zone.Retry }}   ; retry
+    {{ .Zone.Expire }}  ; expire
+    {{ .Zone.Minimum }} ) ; minimum
 {{ range .Zone.NS }}
 @ IN NS {{ . }}
 {{- end }}
@@ -111,8 +135,20 @@ $TTL {{ .Zone.TTL }}
 // It is safe to call repeatedly (idempotent).
 func Sync(cfg Config, hosts []model.Host, dryRun, verbose bool) error {
 	for _, zone := range cfg.Zones {
-		if zone.TTL == 0 {
-			zone.TTL = 3600
+		if zone.TTL.IsZero() {
+			zone.TTL = ttlValue{"3600"}
+		}
+		if zone.Refresh.IsZero() {
+			zone.Refresh = ttlValue{"2h"}
+		}
+		if zone.Retry.IsZero() {
+			zone.Retry = ttlValue{"1h"}
+		}
+		if zone.Expire.IsZero() {
+			zone.Expire = ttlValue{"2w"}
+		}
+		if zone.Minimum.IsZero() {
+			zone.Minimum = zone.TTL
 		}
 
 		content, count, err := renderZone(zone, hosts)
