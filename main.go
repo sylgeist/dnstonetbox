@@ -14,11 +14,17 @@ import (
 func main() {
 	configPath := flag.String("config", "config.yaml", "path to config file")
 	once := flag.Bool("once", false, "run once and exit (useful for cron)")
+	dryRun := flag.Bool("dry-run", false, "show what would change without writing files or reloading services")
+	verbose := flag.Bool("verbose", false, "with --dry-run: print unified diff for each changed file")
 	flag.Parse()
 
 	cfg, err := loadConfig(*configPath)
 	if err != nil {
 		log.Fatalf("config: %v", err)
+	}
+
+	if *dryRun {
+		log.Printf("dry-run mode: no files will be written, no services reloaded")
 	}
 
 	client := netbox.NewClient(cfg.Netbox)
@@ -31,19 +37,19 @@ func main() {
 		}
 		log.Printf("netbox: fetched %d hosts", len(hosts))
 
-		if err := nsd.Sync(cfg.NSD, hosts); err != nil {
+		if err := nsd.Sync(cfg.NSD, hosts, *dryRun, *verbose); err != nil {
 			log.Printf("nsd: %v", err)
 		}
-		if err := unbound.Sync(cfg.Unbound, hosts); err != nil {
+		if err := unbound.Sync(cfg.Unbound, hosts, *dryRun, *verbose); err != nil {
 			log.Printf("unbound: %v", err)
 		}
-		if err := dhcpd.Sync(cfg.DHCPD, hosts); err != nil {
+		if err := dhcpd.Sync(cfg.DHCPD, hosts, *dryRun, *verbose); err != nil {
 			log.Printf("dhcpd: %v", err)
 		}
 	}
 
 	sync()
-	if *once {
+	if *once || *dryRun {
 		return
 	}
 
