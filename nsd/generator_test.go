@@ -159,7 +159,7 @@ func TestSync_ForwardZone(t *testing.T) {
 	}
 
 	cfg := Config{ZonesDir: dir, Zones: []ZoneConfig{newZoneCfg("example.com")}}
-	if err := Sync(cfg, hosts); err != nil {
+	if err := Sync(cfg, hosts, false, false); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
 
@@ -178,12 +178,12 @@ func TestSync_ForwardZone_Idempotent(t *testing.T) {
 	}
 	cfg := Config{ZonesDir: dir, Zones: []ZoneConfig{newZoneCfg("example.com")}}
 
-	if err := Sync(cfg, hosts); err != nil {
+	if err := Sync(cfg, hosts, false, false); err != nil {
 		t.Fatalf("first Sync: %v", err)
 	}
 	info1, _ := os.Stat(filepath.Join(dir, "example.com.zone"))
 
-	if err := Sync(cfg, hosts); err != nil {
+	if err := Sync(cfg, hosts, false, false); err != nil {
 		t.Fatalf("second Sync: %v", err)
 	}
 	info2, _ := os.Stat(filepath.Join(dir, "example.com.zone"))
@@ -204,7 +204,7 @@ func TestSync_ForwardZone_ReloadOnChange(t *testing.T) {
 	}
 	hosts := []model.Host{{Name: "host1.example.com", IPv4: net.ParseIP("192.168.1.10")}}
 
-	if err := Sync(cfg, hosts); err != nil {
+	if err := Sync(cfg, hosts, false, false); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
 	if _, err := os.Stat(flag); err != nil {
@@ -223,7 +223,7 @@ func TestSync_ReverseZoneIPv4(t *testing.T) {
 	}
 
 	cfg := Config{ZonesDir: dir, Zones: []ZoneConfig{newZoneCfg("1.168.192.in-addr.arpa")}}
-	if err := Sync(cfg, hosts); err != nil {
+	if err := Sync(cfg, hosts, false, false); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
 
@@ -240,12 +240,12 @@ func TestSync_ReverseZoneIPv4_Idempotent(t *testing.T) {
 	}
 	cfg := Config{ZonesDir: dir, Zones: []ZoneConfig{newZoneCfg("1.168.192.in-addr.arpa")}}
 
-	if err := Sync(cfg, hosts); err != nil {
+	if err := Sync(cfg, hosts, false, false); err != nil {
 		t.Fatalf("first Sync: %v", err)
 	}
 	info1, _ := os.Stat(filepath.Join(dir, "1.168.192.in-addr.arpa.zone"))
 
-	if err := Sync(cfg, hosts); err != nil {
+	if err := Sync(cfg, hosts, false, false); err != nil {
 		t.Fatalf("second Sync: %v", err)
 	}
 	info2, _ := os.Stat(filepath.Join(dir, "1.168.192.in-addr.arpa.zone"))
@@ -267,7 +267,7 @@ func TestSync_ReverseZoneIPv6(t *testing.T) {
 	}
 
 	cfg := Config{ZonesDir: dir, Zones: []ZoneConfig{newZoneCfg(zone)}}
-	if err := Sync(cfg, hosts); err != nil {
+	if err := Sync(cfg, hosts, false, false); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
 
@@ -275,6 +275,84 @@ func TestSync_ReverseZoneIPv6(t *testing.T) {
 	assertContains(t, content, "IN PTR host1.example.com.")
 	assertContains(t, content, "IN PTR host2.example.com.")
 	assertNotContains(t, content, "other.example.com")
+}
+
+// --- Sync: dry-run ---
+
+func TestSync_DryRun_DoesNotWriteFile(t *testing.T) {
+	dir := t.TempDir()
+	hosts := []model.Host{
+		{Name: "host1.example.com", IPv4: net.ParseIP("192.168.1.10")},
+	}
+	cfg := Config{ZonesDir: dir, Zones: []ZoneConfig{newZoneCfg("example.com")}}
+
+	if err := Sync(cfg, hosts, true, false); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+
+	path := filepath.Join(dir, "example.com.zone")
+	if _, err := os.Stat(path); err == nil {
+		t.Error("dry-run must not write any files")
+	}
+}
+
+func TestSync_DryRun_DoesNotReload(t *testing.T) {
+	dir := t.TempDir()
+	flag := filepath.Join(t.TempDir(), "reloaded")
+
+	cfg := Config{
+		ZonesDir:  dir,
+		ReloadCmd: "touch " + flag,
+		Zones:     []ZoneConfig{newZoneCfg("example.com")},
+	}
+	hosts := []model.Host{{Name: "host1.example.com", IPv4: net.ParseIP("192.168.1.10")}}
+
+	if err := Sync(cfg, hosts, true, false); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	if _, err := os.Stat(flag); err == nil {
+		t.Error("dry-run must not call the reload command")
+	}
+}
+
+// --- unifiedDiff ---
+
+func TestUnifiedDiff_IdenticalContent(t *testing.T) {
+	got := unifiedDiff("test.zone", []byte("line1\nline2\n"), []byte("line1\nline2\n"))
+	if got != "" {
+		t.Errorf("expected empty string for identical content, got:\n%s", got)
+	}
+}
+
+func TestUnifiedDiff_Addition(t *testing.T) {
+	old := []byte("line1\nline2\n")
+	newContent := []byte("line1\nline2\nline3\n")
+	got := unifiedDiff("test.zone", old, newContent)
+	if !strings.Contains(got, "+line3") {
+		t.Errorf("diff missing added line, got:\n%s", got)
+	}
+	if !strings.Contains(got, "@@") {
+		t.Errorf("diff missing hunk header, got:\n%s", got)
+	}
+}
+
+func TestUnifiedDiff_Removal(t *testing.T) {
+	old := []byte("line1\nline2\nline3\n")
+	newContent := []byte("line1\nline3\n")
+	got := unifiedDiff("test.zone", old, newContent)
+	if !strings.Contains(got, "-line2") {
+		t.Errorf("diff missing removed line, got:\n%s", got)
+	}
+}
+
+func TestUnifiedDiff_NewFile(t *testing.T) {
+	got := unifiedDiff("new.zone", nil, []byte("line1\nline2\n"))
+	if !strings.Contains(got, "+line1") || !strings.Contains(got, "+line2") {
+		t.Errorf("diff for new file missing content, got:\n%s", got)
+	}
+	if !strings.Contains(got, "@@ -1,0") {
+		t.Errorf("new-file diff should have @@ -1,0 header, got:\n%s", got)
+	}
 }
 
 // --- helpers ---
