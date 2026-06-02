@@ -137,6 +137,53 @@ func TestFetchHosts_NilAssignedObject(t *testing.T) {
 	}
 }
 
+func TestFetchHosts_SortedByName(t *testing.T) {
+	// Supplied in reverse order; FetchHosts must return them sorted by Name so
+	// that generated output is stable across runs (map iteration is random).
+	srv := singlePageServer(t, []ipFixture{
+		{Address: "192.168.1.13/24", DNSName: "delta.example.com"},
+		{Address: "192.168.1.12/24", DNSName: "charlie.example.com"},
+		{Address: "192.168.1.11/24", DNSName: "bravo.example.com"},
+		{Address: "192.168.1.10/24", DNSName: "alpha.example.com"},
+	})
+	defer srv.Close()
+
+	hosts, err := netbox.NewClient(netbox.Config{URL: srv.URL, Token: "test"}).FetchHosts()
+	if err != nil {
+		t.Fatalf("FetchHosts: %v", err)
+	}
+	want := []string{"alpha.example.com", "bravo.example.com", "charlie.example.com", "delta.example.com"}
+	if len(hosts) != len(want) {
+		t.Fatalf("got %d hosts, want %d", len(hosts), len(want))
+	}
+	for i, name := range want {
+		if hosts[i].Name != name {
+			t.Errorf("hosts[%d].Name = %q, want %q (not sorted)", i, hosts[i].Name, name)
+		}
+	}
+}
+
+func TestFetchHosts_TrailingSlashURL(t *testing.T) {
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(response{}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	}))
+	defer srv.Close()
+
+	// Configured URL has a trailing slash; the request path must not double up.
+	_, err := netbox.NewClient(netbox.Config{URL: srv.URL + "/", Token: "test"}).FetchHosts()
+	if err != nil {
+		t.Fatalf("FetchHosts: %v", err)
+	}
+	if gotPath != "/api/ipam/ip-addresses/" {
+		t.Errorf("request path = %q, want %q", gotPath, "/api/ipam/ip-addresses/")
+	}
+}
+
 func TestFetchHosts_ServerError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)

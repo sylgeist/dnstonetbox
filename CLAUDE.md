@@ -31,20 +31,22 @@ nsd/             writes $zones_dir/<zone>.zone files from a text/template;
                  calls `nsd-control reload <zone>` per changed zone
 unbound/         writes a flat local-data include file; calls reload_cmd
 dhcpd/           writes host { } stanzas; calls reload_cmd
+internal/fileutil/  shared WriteIfChanged (atomic write) + UnifiedDiff
+                 (--dry-run --verbose output), used by all three generators
 ```
 
 ### Data flow
 
-1. `netbox.Client.FetchHosts()` → `[]model.Host` (source of truth)
-2. Each generator (`nsd.Sync`, `unbound.Sync`, `dhcpd.Sync`) independently renders its output and calls `writeIfChanged` — a file is only written (and its service reloaded) when the content differs from what's on disk.
+1. `netbox.Client.FetchHosts()` → `[]model.Host` (source of truth), sorted by Name for stable output
+2. Each generator (`nsd.Sync`, `unbound.Sync`, `dhcpd.Sync`) independently renders its output and calls `fileutil.WriteIfChanged` — a file is only written (and its service reloaded) when the content differs from what's on disk.
 
 ### Key design decisions
 
 - **Single binary, no runtime deps** — only external dependency is `gopkg.in/yaml.v3` for config; everything else is stdlib. Deploy with `scp`.
-- **Idempotent generators** — each generator is self-contained and safe to call repeatedly. `writeIfChanged` prevents unnecessary service reloads.
+- **Idempotent generators** — each generator is self-contained and safe to call repeatedly. `fileutil.WriteIfChanged` prevents unnecessary service reloads and writes atomically (temp file + rename) so a reader never sees a partial file. Idempotency depends on stable output ordering: `FetchHosts` sorts hosts by Name because Go map iteration is randomized — without it the output (and the NSD serial) would flap and trigger a reload on every poll.
 - **NSD zone serial** — uses a 32-bit FNV-1a hash of the zone name + record content (`contentSerial` in `nsd/generator.go`). The same host data always produces the same serial, which makes zone files idempotent and prevents spurious NSD reloads. Note: serials are not monotonically increasing if records are removed and re-added; this is acceptable for primary-only setups but may cause zone-transfer issues with secondaries.
 - **NSD reverse zones** — zones ending in `.in-addr.arpa` or `.ip6.arpa` are detected automatically and rendered with PTR records instead of A/AAAA records. IPv4 PTR names are computed by stripping the network prefix (derived from the zone name) and reversing the remaining octets. IPv6 PTR names expand all 32 nibbles in reversed order and strip the zone's nibble suffix.
-- **DHCPD output** — only hosts with both a MAC address and an IPv4 address are emitted. The MAC comes from NetBox's `assigned_object.mac_address` (set on the interface linked to the IP).
+- **DHCPD output** — only hosts with both a MAC address and an IPv4 address are emitted. The MAC comes from NetBox's `assigned_object.mac_address` (set on the interface linked to the IP). The `host` declaration name is the full FQDN (unique per host), while the short first label is passed as the `host-name` option — two hosts sharing a leftmost label must not collide on the declaration name.
 - **Unbound output** — generates both forward (`local-data`) and reverse (`local-data-ptr`) entries. The generated file must be referenced with `include:` in `unbound.conf`.
 - **Daemon vs cron** — running with `--once` is suitable for OpenBSD cron (`/etc/cron` or `crontab`). Without `--once`, the binary polls on the configured interval.
 

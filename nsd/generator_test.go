@@ -195,11 +195,16 @@ func TestSync_ForwardZone_Idempotent(t *testing.T) {
 
 func TestSync_ForwardZone_ReloadOnChange(t *testing.T) {
 	dir := t.TempDir()
-	flag := filepath.Join(t.TempDir(), "reloaded")
+	// Sync appends the zone name to ReloadCmd ("nsd-control reload <zone>"), so
+	// run touch from inside reloadDir: the flag confirms the command ran and the
+	// appended zone name lands in reloadDir (proving it was passed) instead of
+	// polluting the package directory.
+	reloadDir := t.TempDir()
+	flag := filepath.Join(reloadDir, "reloaded")
 
 	cfg := Config{
 		ZonesDir:  dir,
-		ReloadCmd: "touch " + flag,
+		ReloadCmd: "cd " + reloadDir + " && touch " + flag,
 		Zones:     []ZoneConfig{newZoneCfg("example.com")},
 	}
 	hosts := []model.Host{{Name: "host1.example.com", IPv4: net.ParseIP("192.168.1.10")}}
@@ -209,6 +214,9 @@ func TestSync_ForwardZone_ReloadOnChange(t *testing.T) {
 	}
 	if _, err := os.Stat(flag); err != nil {
 		t.Error("reload command was not called after initial write")
+	}
+	if _, err := os.Stat(filepath.Join(reloadDir, "example.com")); err != nil {
+		t.Error("zone name was not appended to the reload command")
 	}
 }
 
@@ -312,46 +320,6 @@ func TestSync_DryRun_DoesNotReload(t *testing.T) {
 	}
 	if _, err := os.Stat(flag); err == nil {
 		t.Error("dry-run must not call the reload command")
-	}
-}
-
-// --- unifiedDiff ---
-
-func TestUnifiedDiff_IdenticalContent(t *testing.T) {
-	got := unifiedDiff("test.zone", []byte("line1\nline2\n"), []byte("line1\nline2\n"))
-	if got != "" {
-		t.Errorf("expected empty string for identical content, got:\n%s", got)
-	}
-}
-
-func TestUnifiedDiff_Addition(t *testing.T) {
-	old := []byte("line1\nline2\n")
-	newContent := []byte("line1\nline2\nline3\n")
-	got := unifiedDiff("test.zone", old, newContent)
-	if !strings.Contains(got, "+line3") {
-		t.Errorf("diff missing added line, got:\n%s", got)
-	}
-	if !strings.Contains(got, "@@") {
-		t.Errorf("diff missing hunk header, got:\n%s", got)
-	}
-}
-
-func TestUnifiedDiff_Removal(t *testing.T) {
-	old := []byte("line1\nline2\nline3\n")
-	newContent := []byte("line1\nline3\n")
-	got := unifiedDiff("test.zone", old, newContent)
-	if !strings.Contains(got, "-line2") {
-		t.Errorf("diff missing removed line, got:\n%s", got)
-	}
-}
-
-func TestUnifiedDiff_NewFile(t *testing.T) {
-	got := unifiedDiff("new.zone", nil, []byte("line1\nline2\n"))
-	if !strings.Contains(got, "+line1") || !strings.Contains(got, "+line2") {
-		t.Errorf("diff for new file missing content, got:\n%s", got)
-	}
-	if !strings.Contains(got, "@@ -1,0") {
-		t.Errorf("new-file diff should have @@ -1,0 header, got:\n%s", got)
 	}
 }
 
