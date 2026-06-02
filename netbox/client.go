@@ -6,6 +6,9 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"sort"
+	"strings"
+	"time"
 
 	"github.com/sylgeist/dnstonetbox/model"
 )
@@ -25,7 +28,9 @@ type Client struct {
 
 // NewClient creates a new Client.
 func NewClient(cfg Config) *Client {
-	return &Client{cfg: cfg, http: &http.Client{}}
+	// Normalize the base URL so appending paths never yields a double slash.
+	cfg.URL = strings.TrimRight(cfg.URL, "/")
+	return &Client{cfg: cfg, http: &http.Client{Timeout: 30 * time.Second}}
 }
 
 // FetchHosts retrieves all IP addresses with a dns_name set and returns them
@@ -85,6 +90,10 @@ func (c *Client) FetchHosts() ([]model.Host, error) {
 	for _, h := range byName {
 		hosts = append(hosts, *h)
 	}
+	// Sort by name so generated output is byte-stable across runs (map
+	// iteration order is randomized); this keeps writeIfChanged and the NSD
+	// content serial from flapping.
+	sort.Slice(hosts, func(i, j int) bool { return hosts[i].Name < hosts[j].Name })
 	return hosts, nil
 }
 

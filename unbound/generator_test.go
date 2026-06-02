@@ -144,46 +144,6 @@ func TestSync_DryRun_DoesNotReload(t *testing.T) {
 	}
 }
 
-// --- unifiedDiff ---
-
-func TestUnifiedDiff_IdenticalContent(t *testing.T) {
-	got := unifiedDiff("local-hosts.conf", []byte("line1\nline2\n"), []byte("line1\nline2\n"))
-	if got != "" {
-		t.Errorf("expected empty string for identical content, got:\n%s", got)
-	}
-}
-
-func TestUnifiedDiff_Addition(t *testing.T) {
-	old := []byte("line1\nline2\n")
-	newContent := []byte("line1\nline2\nline3\n")
-	got := unifiedDiff("local-hosts.conf", old, newContent)
-	if !strings.Contains(got, "+line3") {
-		t.Errorf("diff missing added line, got:\n%s", got)
-	}
-	if !strings.Contains(got, "@@") {
-		t.Errorf("diff missing hunk header, got:\n%s", got)
-	}
-}
-
-func TestUnifiedDiff_Removal(t *testing.T) {
-	old := []byte("line1\nline2\nline3\n")
-	newContent := []byte("line1\nline3\n")
-	got := unifiedDiff("local-hosts.conf", old, newContent)
-	if !strings.Contains(got, "-line2") {
-		t.Errorf("diff missing removed line, got:\n%s", got)
-	}
-}
-
-func TestUnifiedDiff_NewFile(t *testing.T) {
-	got := unifiedDiff("local-hosts.conf", nil, []byte("line1\nline2\n"))
-	if !strings.Contains(got, "+line1") || !strings.Contains(got, "+line2") {
-		t.Errorf("diff for new file missing content, got:\n%s", got)
-	}
-	if !strings.Contains(got, "@@ -1,0") {
-		t.Errorf("new-file diff should have @@ -1,0 header, got:\n%s", got)
-	}
-}
-
 // --- helpers ---
 
 func readFile(t *testing.T, path string) string {

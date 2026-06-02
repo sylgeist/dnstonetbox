@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/sylgeist/dnstonetbox/dhcpd"
@@ -59,9 +62,19 @@ func main() {
 	}
 	log.Printf("polling every %s (use --once to run once)", interval)
 
+	// Stop polling cleanly on SIGINT/SIGTERM; an in-flight sync finishes first.
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
-	for range ticker.C {
-		sync()
+	for {
+		select {
+		case <-ctx.Done():
+			log.Printf("shutting down")
+			return
+		case <-ticker.C:
+			sync()
+		}
 	}
 }

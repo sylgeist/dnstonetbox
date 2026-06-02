@@ -1,2 +1,9 @@
 config.yaml
 dnstonetbox
+
+# Release binaries (make cross / make dist)
+dnstonetbox-*
+/dist/
+
+# Generated zone/config output from local --once test runs
+*.zone
