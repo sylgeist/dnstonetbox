@@ -123,6 +123,30 @@ Add to `dhcpd.conf`:
 include "/etc/dhcpd.d/static-hosts.conf";
 ```
 
+#### Netboot (diskless) options
+
+Set the optional `netboot` sub-block to emit `filename`, `option root-path`, and (optionally) `next-server` for hosts whose NetBox IP address carries a `diskless_arch` custom field. Create that custom field in NetBox on the IP address object (Selection type, e.g. `amd64`, `arm64`); its value selects the loader architecture and its presence flags the host as a netboot client. Non-diskless hosts are unaffected.
+
+| Field | Required | Description |
+|---|---|---|
+| `nfs_server` | yes (to enable) | NFS server IP used in `root-path`; enables netboot when set |
+| `root_base` | no | Base path for `root-path`. Default `/diskless/hosts`. Result: `<nfs_server>:<root_base>/<short-host>` |
+| `next_server` | no | TFTP server. Omitted from output when empty (dhcpd then defaults it to itself) |
+| `loader_filename` | no | Template with `{arch}` placeholder. Default `{arch}/loader.efi` |
+
+The `root-path` uses the host's short label (first DNS component), which must match the diskless server's per-host dataset (e.g. `nova/diskless/hosts/<short-host>`). Example output for a diskless host:
+
+```
+host office-nuc.home.arpa {
+    hardware ethernet aa:bb:cc:dd:ee:ff;
+    fixed-address 192.168.10.20;
+    option host-name "office-nuc";
+    filename "amd64/loader.efi";
+    option root-path "192.168.10.10:/diskless/hosts/office-nuc";
+    next-server 192.168.10.1;
+}
+```
+
 ### Full example
 
 ```yaml
