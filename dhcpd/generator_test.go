@@ -232,6 +232,45 @@ func TestSync_DisklessHostEmitsNetbootOptions(t *testing.T) {
 	assertContains(t, content, "next-server 192.168.10.1;")
 }
 
+func TestSync_CustomLoaderFilenameTemplate(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "static-hosts.conf")
+	hosts := []model.Host{
+		{Name: "office-nuc.home.arpa", IPv4: net.ParseIP("192.168.10.20"),
+			MAC: "aa:bb:cc:dd:ee:ff", DisklessArch: "amd64"},
+	}
+	cfg := Config{ConfigFile: path, Netboot: &Netboot{
+		NFSServer: "192.168.10.10", LoaderFilename: "boot/{arch}/pxeboot"}}
+
+	if err := Sync(cfg, hosts, false, false); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	content := readFile(t, path)
+	assertContains(t, content, `filename "boot/amd64/pxeboot";`)
+}
+
+func TestSync_NetbootBlockWithoutNFSServerEmitsPlainHost(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "static-hosts.conf")
+	hosts := []model.Host{
+		{Name: "office-nuc.home.arpa", IPv4: net.ParseIP("192.168.10.20"),
+			MAC: "aa:bb:cc:dd:ee:ff", DisklessArch: "amd64"},
+	}
+	// netboot block present but nfs_server empty → netboot inactive.
+	cfg := Config{ConfigFile: path, Netboot: &Netboot{NextServer: "192.168.10.1"}}
+
+	if err := Sync(cfg, hosts, false, false); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	content := readFile(t, path)
+	assertContains(t, content, "host office-nuc.home.arpa {")
+	for _, s := range []string{"filename", "root-path", "next-server"} {
+		if strings.Contains(content, s) {
+			t.Errorf("netboot without nfs_server must not emit %q:\n%s", s, content)
+		}
+	}
+}
+
 func TestSync_NextServerOmittedWhenUnset(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "static-hosts.conf")
