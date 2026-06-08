@@ -73,6 +73,11 @@ func Sync(cfg Config, hosts []model.Host, dryRun, verbose bool) error {
 			if netbootActive {
 				loader := strings.ReplaceAll(loaderTmpl, "{arch}", h.DisklessArch)
 				fmt.Fprintf(&buf, "\tfilename \"%s\";\n", loader)
+				// root-path uses the short label (not the FQDN) because it must match
+				// the diskless server's per-host dataset, e.g. nova/diskless/hosts/<label>.
+				// Assumes the first DNS label is unique among diskless hosts (true within
+				// a single domain); hosts sharing a leftmost label across zones would
+				// collide on the same root path.
 				fmt.Fprintf(&buf, "\toption root-path \"%s:%s/%s\";\n", nb.NFSServer, rootBase, label)
 				if nb.NextServer != "" {
 					fmt.Fprintf(&buf, "\tnext-server %s;\n", nb.NextServer)
