@@ -78,6 +78,10 @@ func (c *Client) FetchHosts() ([]model.Host, error) {
 			if h.MAC == "" && entry.AssignedObject != nil && entry.AssignedObject.MACAddress != "" {
 				h.MAC = entry.AssignedObject.MACAddress
 			}
+
+			if h.DisklessArch == "" && entry.CustomFields.DisklessArch != "" {
+				h.DisklessArch = entry.CustomFields.DisklessArch
+			}
 		}
 
 		nextURL = ""
@@ -109,6 +113,9 @@ type ipEntry struct {
 	Address        string          `json:"address"`
 	DNSName        string          `json:"dns_name"`
 	AssignedObject *assignedObject `json:"assigned_object"`
+	CustomFields   struct {
+		DisklessArch string `json:"diskless_arch"` // "" when unset/null
+	} `json:"custom_fields"`
 }
 
 // assignedObject is the nested interface representation.
