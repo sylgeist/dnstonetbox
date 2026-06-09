@@ -48,3 +48,12 @@ dhcpd:
   #   include "/etc/dhcpd.d/static-hosts.conf";
   config_file: /etc/dhcpd.d/static-hosts.conf
   reload_cmd: rcctl restart dhcpd
+
+  # Optional: emit FreeBSD diskless netboot options for hosts whose NetBox IP
+  # has a `diskless_arch` custom field (selection: amd64/arm64/...). Omit the
+  # whole netboot block to disable. nfs_server is required to enable it.
+  # netboot:
+  #   nfs_server: 192.168.10.10           # FreeBSD ZFS/NFS server IP
+  #   root_base: /diskless/hosts          # default; root-path = nfs_server:root_base/<short-host>
+  #   next_server: 192.168.10.1           # optional; omit if TFTP runs on the dhcpd host
+  #   loader_filename: "{arch}/loader.efi" # default; {arch} replaced by diskless_arch

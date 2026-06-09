@@ -20,10 +20,15 @@ type ipFixture struct {
 	Address        string      `json:"address"`
 	DNSName        string      `json:"dns_name"`
 	AssignedObject *macFixture `json:"assigned_object"`
+	CustomFields   *cfFixture  `json:"custom_fields,omitempty"`
 }
 
 type macFixture struct {
 	MACAddress string `json:"mac_address"`
+}
+
+type cfFixture struct {
+	DisklessArch string `json:"diskless_arch"`
 }
 
 func singlePageServer(t *testing.T, results []ipFixture) *httptest.Server {
@@ -210,5 +215,31 @@ func TestFetchHosts_AuthHeader(t *testing.T) {
 	netbox.NewClient(netbox.Config{URL: srv.URL, Token: "mytoken"}).FetchHosts() //nolint:errcheck
 	if gotAuth != "Token mytoken" {
 		t.Errorf("Authorization header = %q, want \"Token mytoken\"", gotAuth)
+	}
+}
+
+func TestFetchHosts_DisklessArchCustomField(t *testing.T) {
+	srv := singlePageServer(t, []ipFixture{
+		{Address: "192.168.10.20/24", DNSName: "office-nuc.home.arpa",
+			AssignedObject: &macFixture{MACAddress: "aa:bb:cc:dd:ee:ff"},
+			CustomFields:   &cfFixture{DisklessArch: "amd64"}},
+		{Address: "192.168.10.30/24", DNSName: "plain.home.arpa",
+			AssignedObject: &macFixture{MACAddress: "11:22:33:44:55:66"}},
+	})
+	defer srv.Close()
+
+	hosts, err := netbox.NewClient(netbox.Config{URL: srv.URL, Token: "test"}).FetchHosts()
+	if err != nil {
+		t.Fatalf("FetchHosts: %v", err)
+	}
+	got := map[string]string{}
+	for _, h := range hosts {
+		got[h.Name] = h.DisklessArch
+	}
+	if got["office-nuc.home.arpa"] != "amd64" {
+		t.Errorf("DisklessArch = %q, want amd64", got["office-nuc.home.arpa"])
+	}
+	if got["plain.home.arpa"] != "" {
+		t.Errorf("DisklessArch = %q, want empty for non-diskless host", got["plain.home.arpa"])
 	}
 }

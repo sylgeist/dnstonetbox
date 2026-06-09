@@ -78,6 +78,10 @@ func (c *Client) FetchHosts() ([]model.Host, error) {
 			if h.MAC == "" && entry.AssignedObject != nil && entry.AssignedObject.MACAddress != "" {
 				h.MAC = entry.AssignedObject.MACAddress
 			}
+
+			if h.DisklessArch == "" && entry.CustomFields.DisklessArch != "" {
+				h.DisklessArch = entry.CustomFields.DisklessArch
+			}
 		}
 
 		nextURL = ""
@@ -109,6 +113,13 @@ type ipEntry struct {
 	Address        string          `json:"address"`
 	DNSName        string          `json:"dns_name"`
 	AssignedObject *assignedObject `json:"assigned_object"`
+	// Assumes the diskless_arch Selection custom field serializes as a plain
+	// string (the default for NetBox text/selection CFs). If an instance returns
+	// it as an object (e.g. {"value":"amd64"}), this decodes to "" and the host
+	// is treated as non-diskless — change the type to a small struct if needed.
+	CustomFields struct {
+		DisklessArch string `json:"diskless_arch"` // "" when unset/null
+	} `json:"custom_fields"`
 }
 
 // assignedObject is the nested interface representation.
