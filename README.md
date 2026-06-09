@@ -147,6 +147,33 @@ host office-nuc.home.arpa {
 }
 ```
 
+**Creating the `diskless_arch` custom field in NetBox.** Selection custom fields use
+a separate choice set (NetBox 3.6+/4.x), so this is two steps:
+
+1. **Customization → Custom Field Choice Sets** → *Add*: give it a name (e.g.
+   `diskless-arch`) and add one extra choice per arch — `amd64`, `arm64`
+   (add more later as needed). *(On NetBox < 3.6 there is no separate choice set —
+   enter the choices directly in the custom field's Choices box in step 2.)*
+2. **Customization → Custom Fields** → *Add*:
+   - **Object types:** `IPAM › IP Address`
+   - **Name:** `diskless_arch` — must be exactly this; the field *name* (not the
+     label) is the key returned under `custom_fields` and the one this tool reads.
+   - **Type:** Selection (single); **Choice set:** the set from step 1.
+   - **Required:** No. **Default:** empty (empty = not a diskless host).
+
+Then set the field on a host's IP address (edit the IP → *Custom Fields* → choose
+the arch). Verify the API returns it as a plain string:
+
+```sh
+curl -s -H "Authorization: Token <token>" \
+  "https://<netbox>/api/ipam/ip-addresses/?dns_name=office-nuc.home.arpa" | grep -A2 custom_fields
+# want: "custom_fields": {"diskless_arch": "amd64"}
+```
+
+If your NetBox returns the value as an object (`{"value": "amd64", ...}`) instead of
+a string, the field decodes to empty and the host is treated as non-diskless — see
+the note in `netbox/client.go`.
+
 ### Full example
 
 ```yaml
